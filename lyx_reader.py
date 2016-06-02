@@ -109,6 +109,11 @@ def lyx_to_xml(content):
 
 def fix_lyx_xhtml(content):
     soup = BeautifulSoup(content, "html.parser")
+    try:
+        soup.find("body").find("h1", attrs={"class":"title"}).decompose()
+        soup.find("body").find("div", attrs={"class":"author"}).decompose()
+    except AttributeError:
+        pass
     return str(soup.find("body"))
 
 class LyxReader(BaseReader):
