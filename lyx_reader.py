@@ -1,11 +1,19 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals, print_function
+
 import re
 import subprocess
 import os
 import xml.etree.ElementTree as etree
 import tempfile
+import io
+import six
+import sys
+from six.moves import html_parser
 from pelican import signals
 from pelican.readers import BaseReader
 from pelican.utils import pelican_open
+from bs4 import BeautifulSoup
 
 def lyx_to_xml(content):
     def get_last_of_stack(stack):
@@ -99,12 +107,16 @@ def lyx_to_xml(content):
             get_last_of_stack(stack).text = text + line
     return tree
 
+def fix_lyx_xhtml(content):
+    soup = BeautifulSoup(content, "html.parser")
+    return str(soup.find("body"))
+
 class LyxReader(BaseReader):
     enabled = True
     file_extensions = ['lyx']
 
     def read(self, filename):
-        with open(filename, "r", encoding="utf-8") as lyx_file:
+        with io.open(filename, "r", encoding="utf-8") as lyx_file:
             tree = lyx_to_xml(lyx_file.read())
 
         element = tree.find("./document/header/preamble")
@@ -127,11 +139,17 @@ class LyxReader(BaseReader):
             html_file_path = html_file.name
 
         command = 'lyx -E xhtml "%s" "%s"' % (html_file_path, os.path.normpath(filename))
+        if six.PY2:
+            command = command.encode("utf-8")
         os.system(command)
 
         html_content = ""
-        with open(html_file_path, "r", encoding="utf-8") as html_file:
+        with io.open(html_file_path, "r", encoding="utf-8") as html_file:
             html_content = html_file.read()
+            html_content = fix_lyx_xhtml(html_content)
+
+        if six.PY2:
+            html_content = html_content.decode('utf-8')
 
         return html_content, metadata
 
