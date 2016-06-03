@@ -107,6 +107,28 @@ def lyx_to_xml(content):
             get_last_of_stack(stack).text = text + line
     return tree
 
+def fix_html_element(soup, element):
+    # Parse the header line
+    matched = re.match(r"h(\d+)", element.name)
+    if matched:
+        # Wrap header lines into a section div
+        new_tag = soup.new_tag("div", class_="section")
+
+        element.attrs = {} # Clear all attributes
+        element.wrap(new_tag)
+        element = new_tag
+        return element
+
+    # Replace tag name of text area to "p"
+    if ((element.name == "div")
+        and (element.get("class") is not None)
+        and (element.get("class")[0] == "standard")):
+        element.name = "p"
+        element.attrs = {} # Clear all attributes
+        return element
+
+    return element
+
 def fix_lyx_xhtml(content):
     soup = BeautifulSoup(content, "html.parser")
     e_body = soup.find("body")
@@ -123,14 +145,10 @@ def fix_lyx_xhtml(content):
             matched = re.match(r"h(\d+)", element.name)
 
             if matched is not None:
-                # Wrap header lines into a section div
-                new_tag = soup.new_tag("div", class_="section", id_="id%s" % div_id)
-                div_id += 1
+                matched = re.match(r"h(\d+)", element.name)
                 section_level = int(matched.group(1))
 
-                element.attrs = {} # Clear all attributes
-                element.wrap(new_tag)
-                element = new_tag
+                element = fix_html_element(soup, element)
 
                 # First backup next element, because we will change the element
                 # variant later.
@@ -156,7 +174,7 @@ def fix_lyx_xhtml(content):
                 next_element = element.find_next_sibling()
 
                 last_section = section_stack[len(section_stack) - 1]
-                last_section.append(element)
+                last_section.append(fix_html_element(soup, element))
 
                 element = next_element
 
