@@ -109,11 +109,57 @@ def lyx_to_xml(content):
 
 def fix_lyx_xhtml(content):
     soup = BeautifulSoup(content, "html.parser")
-    try:
-        soup.find("body").find("h1", attrs={"class":"title"}).decompose()
-        soup.find("body").find("div", attrs={"class":"author"}).decompose()
-    except AttributeError:
-        pass
+    e_body = soup.find("body")
+    if e_body is not None:
+        # Removed title and author lines
+        e_body.find("h1", attrs={"class":"title"}).decompose()
+        e_body.find("div", attrs={"class":"author"}).decompose()
+
+        section_stack = []
+        div_id = 0
+
+        element = e_body.findChild()
+        while element is not None:
+            matched = re.match(r"h(\d+)", element.name)
+
+            if matched is not None:
+                # Wrap header lines into a section div
+                new_tag = soup.new_tag("div", class_="section", id_="id%s" % div_id)
+                div_id += 1
+                section_level = int(matched.group(1))
+
+                element.attrs = {} # Clear all attributes
+                element.wrap(new_tag)
+                element = new_tag
+
+                # First backup next element, because we will change the element
+                # variant later.
+                next_element = element.find_next_sibling()
+
+                # Find the level we should place into
+                while len(section_stack) > 0:
+                    last_section = section_stack[len(section_stack) - 1]
+                    last_section_name = last_section.find(re.compile(r"h\d+")).name
+                    last_section_level = int(re.match(r"h(\d+)", last_section_name).group(1))
+
+                    if section_level >= last_section_level:
+                        # Remove the last element of section_stack
+                        del section_stack[len(section_stack) - 1]
+                    else:
+                        last_section.append(element)
+                        break
+
+                section_stack.append(element)
+
+                element = next_element
+            else:
+                next_element = element.find_next_sibling()
+
+                last_section = section_stack[len(section_stack) - 1]
+                last_section.append(element)
+
+                element = next_element
+
     return str(soup.find("body"))
 
 class LyxReader(BaseReader):
@@ -121,6 +167,7 @@ class LyxReader(BaseReader):
     file_extensions = ['lyx']
 
     def read(self, filename):
+
         with io.open(filename, "r", encoding="utf-8") as lyx_file:
             tree = lyx_to_xml(lyx_file.read())
 
