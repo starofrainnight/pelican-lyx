@@ -131,53 +131,59 @@ def fix_html_element(soup, element):
 def fix_lyx_xhtml(content):
     soup = BeautifulSoup(content, "html.parser")
     e_body = soup.find("body")
-    if e_body is not None:
-        # Removed title and author lines
+    if e_body is None:
+        return str(e_body)
+
+    # Removed title and author lines
+    try:
         e_body.find("h1", attrs={"class":"title"}).decompose()
         e_body.find("div", attrs={"class":"author"}).decompose()
+    except AttributeError:
+        # Not a valid lyx file
+        return str(e_body)
 
-        section_stack = []
-        div_id = 0
+    section_stack = []
+    div_id = 0
 
-        element = e_body.findChild()
-        while element is not None:
+    element = e_body.findChild()
+    while element is not None:
+        matched = re.match(r"h(\d+)", element.name)
+
+        if matched is not None:
             matched = re.match(r"h(\d+)", element.name)
+            section_level = int(matched.group(1))
 
-            if matched is not None:
-                matched = re.match(r"h(\d+)", element.name)
-                section_level = int(matched.group(1))
+            element = fix_html_element(soup, element)
 
-                element = fix_html_element(soup, element)
+            # First backup next element, because we will change the element
+            # variant later.
+            next_element = element.find_next_sibling()
 
-                # First backup next element, because we will change the element
-                # variant later.
-                next_element = element.find_next_sibling()
-
-                # Find the level we should place into
-                while len(section_stack) > 0:
-                    last_section = section_stack[len(section_stack) - 1]
-                    last_section_name = last_section.find(re.compile(r"h\d+")).name
-                    last_section_level = int(re.match(r"h(\d+)", last_section_name).group(1))
-
-                    if section_level >= last_section_level:
-                        # Remove the last element of section_stack
-                        del section_stack[len(section_stack) - 1]
-                    else:
-                        last_section.append(element)
-                        break
-
-                section_stack.append(element)
-
-                element = next_element
-            else:
-                next_element = element.find_next_sibling()
-
+            # Find the level we should place into
+            while len(section_stack) > 0:
                 last_section = section_stack[len(section_stack) - 1]
-                last_section.append(fix_html_element(soup, element))
+                last_section_name = last_section.find(re.compile(r"h\d+")).name
+                last_section_level = int(re.match(r"h(\d+)", last_section_name).group(1))
 
-                element = next_element
+                if section_level >= last_section_level:
+                    # Remove the last element of section_stack
+                    del section_stack[len(section_stack) - 1]
+                else:
+                    last_section.append(element)
+                    break
 
-    return str(soup.find("body"))
+            section_stack.append(element)
+
+            element = next_element
+        else:
+            next_element = element.find_next_sibling()
+
+            last_section = section_stack[len(section_stack) - 1]
+            last_section.append(fix_html_element(soup, element))
+
+            element = next_element
+
+    return str(e_body)
 
 class LyxReader(BaseReader):
     enabled = True
