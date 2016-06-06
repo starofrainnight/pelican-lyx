@@ -7,7 +7,7 @@ import pydgutils
 import sys
 from setuptools import setup, find_packages
 
-package_name = "pelican_lyx_reader"
+package_name = "pelican-lyx-reader"
 
 source_dir = pydgutils.process()
 
