@@ -19,7 +19,7 @@ long_description=(
      open("CHANGES.rst", "r").read()
      )
 
-install_requires = []
+install_requires = ["six", "beautifulsoup4", "pelican"]
 
 setup(
     name=package_name,
