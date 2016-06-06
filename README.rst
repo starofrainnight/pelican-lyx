@@ -1,13 +1,13 @@
 lyx_reader
 =============
 
-A [lyx] reader plugin for [pelican]
+A lyx [#lyx]_ reader plugin for pelican [#pelican]_
 
 
 Requirements
 ------------
 
-  - [lyx] in $PATH
+- lyx in $PATH
 
 Installation
 ------------
@@ -24,5 +24,5 @@ Contributing
 5. Create new Pull Request
 
 
-[lyx]: https://www.lyx.org
-[pelican]: http://getpelican.com
+.. [#lyx] https://www.lyx.org
+.. [#pelican] http://getpelican.com
